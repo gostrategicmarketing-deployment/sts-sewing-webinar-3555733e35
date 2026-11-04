@@ -65,6 +65,12 @@ tr.hl td{background:color-mix(in srgb,var(--sun) 14%,transparent)}
 #lb{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:9;padding:16px}
 #lb img{max-width:100%;max-height:92vh;border-radius:10px}
 .live{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pg{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:16px}
+.pgt{height:12px;border-radius:99px;background:var(--bar-track);overflow:hidden}
+.pgf{height:100%;width:0;border-radius:99px;background:var(--sun);transition:width .5s;background-image:linear-gradient(45deg,rgba(255,255,255,.35) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.35) 50%,rgba(255,255,255,.35) 75%,transparent 75%);background-size:24px 24px;animation:mv 1s linear infinite}
+.pg.done .pgf{animation:none;background-image:none;background:var(--good)}.pg.err .pgf{animation:none;background-image:none;background:var(--bad)}
+@keyframes mv{to{background-position:24px 0}}
+.pgl{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:.88rem;margin-top:8px}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--good);display:inline-block}.dot.stale{background:var(--sun-deep)}
 @media(max-width:600px){h1{font-size:1.6rem}.bars .b{grid-template-columns:100px 1fr 58px}}
 </style>
@@ -79,6 +85,7 @@ tr.hl td{background:color-mix(in srgb,var(--sun) 14%,transparent)}
   </div>
   <div class="live"><button class="btn hide" id="pp" title="Pull Meta + Hyros now and publish to GitHub">Pull &amp; publish</button><button class="btn" id="rf">Refresh now</button><button class="btn" id="theme">Theme</button></div>
 </header>
+<div class="pg hide" id="pg"><div class="pgt"><div class="pgf" id="pgf"></div></div><div class="pgl"><span id="pgs"></span><span class="note" id="pge"></span></div><div class="note" id="pgm" style="margin-top:4px"></div></div>
 <div class="tabs" id="tabs">
   <button class="tab on" data-t="ov">Overview</button>
   <button class="tab" data-t="dy">Daily</button>
@@ -261,20 +268,27 @@ load();
 // Local-only: when served by serve.py, show a button that pulls Meta + Hyros and pushes to GitHub.
 let LOCAL=false;
 async function localCheck(){
-  try{const r=await fetch("/status",{cache:"no-store"});if(!r.ok)return;const j=await r.json();if(!j.local)return;LOCAL=true;$("#pp").classList.remove("hide");if(j.running)watch()}catch(e){}
+  try{const r=await fetch("/status",{cache:"no-store"});if(!r.ok)return;const j=await r.json();if(!j.local)return;LOCAL=true;$("#pp").classList.remove("hide");if(j.running){$("#pg").classList.remove("hide");watch()}}catch(e){}
 }
 async function watch(){
-  const b=$("#pp");b.disabled=true;
+  const b=$("#pp"),pg=$("#pg");b.disabled=true;pg.className="pg";$("#ppmsg").textContent="";
   for(;;){
     const j=await (await fetch("/status",{cache:"no-store"})).json();
-    if(j.running){b.textContent=j.step||"Working…";await new Promise(r=>setTimeout(r,1500));continue}
+    if(j.running){
+      const n=j.idx,t=j.total;
+      $("#pgf").style.width=Math.max(6,Math.round((n+0.5)/t*100))+"%";
+      $("#pgs").textContent=`Step ${n+1} of ${t}: ${j.step}…`;
+      $("#pge").textContent=j.elapsed!=null?j.elapsed+"s":"";
+      $("#pgm").textContent="";b.textContent="Working…";
+      await new Promise(r=>setTimeout(r,1000));continue}
     b.disabled=false;b.textContent="Pull & publish";
-    $("#ppmsg").textContent=j.ok?"✓ "+j.msg:"✗ "+j.msg;
+    $("#pgf").style.width="100%";pg.className="pg "+(j.ok?"done":"err");
+    $("#pgs").textContent=j.ok?"✓ Done":"✗ Failed";$("#pge").textContent="";$("#pgm").textContent=j.msg;
     if(j.ok)await load(false,true);
     break;
   }
 }
-$("#pp").onclick=async()=>{if(!LOCAL)return;$("#ppmsg").textContent="";await fetch("/refresh",{method:"POST"});watch()};
+$("#pp").onclick=async()=>{if(!LOCAL)return;$("#pg").classList.remove("hide");$("#pgf").style.width="6%";$("#pgs").textContent="Starting…";await fetch("/refresh",{method:"POST"});watch()};
 localCheck();
 </script>
 </body>
