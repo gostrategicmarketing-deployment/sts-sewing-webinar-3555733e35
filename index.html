@@ -75,9 +75,9 @@ tr.hl td{background:color-mix(in srgb,var(--sun) 14%,transparent)}
   <div>
     <h1>STS Sewing Webinar 2026</h1>
     <div class="sub">TOF | Sewing Webinar 2026 | ABO · School of Traditional Skills ad account · launched Nov 4, 2026</div>
-    <div class="sub live"><span class="dot" id="dot"></span><span id="upd">Loading…</span><span class="note">Auto-updates hourly · Meta spend/clicks, Hyros leads (last click)</span></div>
+    <div class="sub live"><span class="dot" id="dot"></span><span id="ppmsg" class="note"></span><span id="upd">Loading…</span><span class="note">Auto-updates hourly · Meta spend/clicks, Hyros leads (last click)</span></div>
   </div>
-  <div class="live"><button class="btn" id="rf">Refresh now</button><button class="btn" id="theme">Theme</button></div>
+  <div class="live"><button class="btn hide" id="pp" title="Pull Meta + Hyros now and publish to GitHub">Pull &amp; publish</button><button class="btn" id="rf">Refresh now</button><button class="btn" id="theme">Theme</button></div>
 </header>
 <div class="tabs" id="tabs">
   <button class="tab on" data-t="ov">Overview</button>
@@ -138,6 +138,7 @@ tr.hl td{background:color-mix(in srgb,var(--sun) 14%,transparent)}
       <li>New leads are people Hyros had not seen before. Leads also counts existing contacts who registered through these ads.</li>
       <li>Meta pixel leads are lower than Hyros and shown only for comparison.</li>
       <li>Dates follow the ad account's Pacific time zone. Today is a partial day. Ad level figures can trail campaign totals slightly because Meta updates them at different times.</li>
+      <li><b>Local copy:</b> run <code>Sewing Dashboard.command</code> (http://localhost:7790) to get a <b>Pull &amp; publish</b> button that pulls Meta and Hyros right now and pushes the new numbers to GitHub.</li>
       <li><b>How updating works:</b> a GitHub job re-pulls Meta and Hyros every hour and publishes <code>data.json</code>. This page re-reads it every 5 minutes and when you return to the tab. <b>Refresh now</b> fetches the latest published numbers immediately; it cannot force a new Meta/Hyros pull from this public page, so use "Run pull now on GitHub" for that (needs repo access).</li>
     </ul>
     <p><a id="gh" href="#" target="_blank" rel="noopener">Run pull now on GitHub</a></p>
@@ -244,11 +245,11 @@ $("#min").oninput=()=>D&&renderTop();
 function ago(iso){const m=Math.round((Date.now()-new Date(iso))/60000);return m<1?"just now":m<60?m+" min ago":Math.floor(m/60)+" h "+(m%60)+" min ago"}
 function paintStamp(){if(!D)return;const m=(Date.now()-new Date(D.pulled_at))/60000;$("#upd").textContent="Data pulled "+ago(D.pulled_at)+" ("+new Date(D.pulled_at).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})+")";$("#dot").classList.toggle("stale",m>150)}
 function apply(d){D=d;AD=d.ads.map(a=>derive({...a,sset:short(a.set)}));buildSets();renderKpis();renderTop();renderBars();renderDaily();renderTables();paintStamp()}
-async function load(manual){
+async function load(manual,force){
   const b=$("#rf");if(manual){b.disabled=true;b.textContent="Checking…"}
   try{
     const r=await fetch("data.json?cb="+Date.now(),{cache:"no-store"});const d=await r.json();
-    const fresh=!D||d.pulled_at!==D.pulled_at;if(fresh)apply(d);else paintStamp();
+    const fresh=force||!D||d.pulled_at!==D.pulled_at;if(fresh)apply(d);else paintStamp();
     if(manual)b.textContent=fresh?"Updated":"Already latest";
   }catch(e){if(manual)b.textContent="Couldn't load";$("#upd").textContent=D?$("#upd").textContent:"Couldn't load data"}
   if(manual)setTimeout(()=>{b.disabled=false;b.textContent="Refresh now"},1800);
@@ -257,6 +258,24 @@ $("#rf").onclick=()=>load(true);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)load()});
 setInterval(()=>load(),5*60*1000);setInterval(paintStamp,30000);
 load();
+// Local-only: when served by serve.py, show a button that pulls Meta + Hyros and pushes to GitHub.
+let LOCAL=false;
+async function localCheck(){
+  try{const r=await fetch("/status",{cache:"no-store"});if(!r.ok)return;const j=await r.json();if(!j.local)return;LOCAL=true;$("#pp").classList.remove("hide");if(j.running)watch()}catch(e){}
+}
+async function watch(){
+  const b=$("#pp");b.disabled=true;
+  for(;;){
+    const j=await (await fetch("/status",{cache:"no-store"})).json();
+    if(j.running){b.textContent=j.step||"Working…";await new Promise(r=>setTimeout(r,1500));continue}
+    b.disabled=false;b.textContent="Pull & publish";
+    $("#ppmsg").textContent=j.ok?"✓ "+j.msg:"✗ "+j.msg;
+    if(j.ok)await load(false,true);
+    break;
+  }
+}
+$("#pp").onclick=async()=>{if(!LOCAL)return;$("#ppmsg").textContent="";await fetch("/refresh",{method:"POST"});watch()};
+localCheck();
 </script>
 </body>
 </html>
