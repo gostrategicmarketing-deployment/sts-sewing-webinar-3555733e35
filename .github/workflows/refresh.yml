@@ -1,0 +1,96 @@
+name: refresh
+
+# Pull Meta + Hyros for the sewing webinar campaign, publish data.json, repeat hourly.
+#
+# GitHub's `schedule` is unreliable on this account, so the workflow is its own scheduler:
+# it records its start, does the pull, sleeps until start + INTERVAL, then dispatches itself.
+# (The default GITHUB_TOKEN can dispatch workflow_dispatch.) `schedule` stays only as a way
+# back in if the chain ever dies; the guard below stops it from doubling up.
+#
+# Secrets: FB_TOKEN (read-only Meta), HYROS_API_KEY. They reach refresh.py as env vars and
+# never touch the repo or the page. data.json holds ad names, ids and counts only.
+#
+# To stop the chain: cancel the running run (the hold and re-dispatch steps are skipped).
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [refresh.py, .github/workflows/refresh.yml]
+  schedule:
+    - cron: "8 * * * *"
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+env:
+  INTERVAL: "3600"
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Note the start time
+        run: echo "RUN_STARTED=$(date +%s)" >> "$GITHUB_ENV"
+
+      - name: Skip if another run is already holding the chain
+        id: guard
+        if: ${{ github.event_name == 'schedule' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # `pending` (held by the concurrency group) counts as in flight, not just queued.
+          n=$(gh run list -R "$GITHUB_REPOSITORY" --workflow refresh.yml --json databaseId,status \
+              --jq "[.[] | select(.status != \"completed\" and .databaseId != ${{ github.run_id }})] | length")
+          echo "other runs in flight: $n"
+          if [ "$n" -gt 0 ]; then echo "skip=1" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: actions/checkout@v5
+        if: ${{ steps.guard.outputs.skip != '1' }}
+
+      - uses: actions/setup-python@v6
+        if: ${{ steps.guard.outputs.skip != '1' }}
+        with:
+          python-version: "3.11"
+
+      - name: Pull Meta and Hyros
+        if: ${{ steps.guard.outputs.skip != '1' }}
+        env:
+          FB_TOKEN: ${{ secrets.FB_TOKEN }}
+          HYROS_API_KEY: ${{ secrets.HYROS_API_KEY }}
+        run: python3 refresh.py
+
+      - name: Publish data.json
+        if: ${{ steps.guard.outputs.skip != '1' }}
+        run: |
+          git config user.name  "gostrategicmarketing-deployment"
+          git config user.email "gostrategicmarketing-deployment@users.noreply.github.com"
+          git add data.json
+          if git diff --staged --quiet; then echo "nothing changed"; exit 0; fi
+          git commit -m "data $(date -u +%Y-%m-%dT%H:%MZ)"
+          git pull --rebase -X theirs
+          git push
+
+      - name: Hold until the interval is up
+        if: ${{ !cancelled() && steps.guard.outputs.skip != '1' }}
+        run: |
+          now=$(date +%s); due=$((RUN_STARTED + INTERVAL))
+          if [ "$due" -gt "$now" ]; then echo "sleeping $((due-now))s"; sleep $((due-now)); fi
+
+      - name: Hand on to the next run
+        if: ${{ !cancelled() && steps.guard.outputs.skip != '1' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run refresh.yml -R "$GITHUB_REPOSITORY"
+          sleep 20
+          n=$(gh run list -R "$GITHUB_REPOSITORY" --workflow refresh.yml --json databaseId,status \
+              --jq "[.[] | select(.status != \"completed\" and .databaseId != ${{ github.run_id }})] | length")
+          if [ "$n" -lt 1 ]; then echo "::error::dispatch produced no run; the chain would die here"; exit 1; fi
+          echo "next run is in flight"
