@@ -55,6 +55,17 @@ tr.hl td{background:color-mix(in srgb,var(--sun) 14%,transparent)}
 .good{color:var(--good);font-weight:700}.bad{color:var(--bad);font-weight:700}
 .note{color:var(--muted);font-size:.82rem}
 .hide{display:none}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+.gc{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer}
+.gc img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block;background:var(--stone)}
+.gc .m{padding:8px 10px;font-size:.8rem}.gc .m b{font-size:1rem}
+.gc .rk{position:absolute;top:8px;left:8px;background:var(--sun);color:#35383F;font-weight:700;border-radius:99px;padding:0 9px}
+.gc .w{position:relative}
+.th{width:44px;height:55px;object-fit:cover;border-radius:4px;vertical-align:middle;cursor:pointer;background:var(--stone)}
+#lb{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:9;padding:16px}
+#lb img{max-width:100%;max-height:92vh;border-radius:10px}
+.live{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--good);display:inline-block}.dot.stale{background:var(--sun-deep)}
 @media(max-width:600px){h1{font-size:1.6rem}.bars .b{grid-template-columns:100px 1fr 58px}}
 </style>
 </head>
@@ -64,13 +75,13 @@ tr.hl td{background:color-mix(in srgb,var(--sun) 14%,transparent)}
   <div>
     <h1>STS Sewing Webinar 2026</h1>
     <div class="sub">TOF | Sewing Webinar 2026 | ABO · School of Traditional Skills ad account · launched Nov 4, 2026</div>
-    <div class="sub">Snapshot pulled Nov 4, 2026, 7:25 AM Eastern. Nov 4 is a partial day. Meta spend/clicks, Hyros leads (last click).</div>
+    <div class="sub live"><span class="dot" id="dot"></span><span id="upd">Loading…</span><span class="note">Auto-updates hourly · Meta spend/clicks, Hyros leads (last click)</span></div>
   </div>
-  <button class="btn" id="theme">Toggle theme</button>
+  <div class="live"><button class="btn" id="rf">Refresh now</button><button class="btn" id="theme">Theme</button></div>
 </header>
-
 <div class="tabs" id="tabs">
   <button class="tab on" data-t="ov">Overview</button>
+  <button class="tab" data-t="dy">Daily</button>
   <button class="tab" data-t="as">Ad sets</button>
   <button class="tab" data-t="ads">All ads</button>
   <button class="tab" data-t="nt">Notes</button>
@@ -79,21 +90,25 @@ tr.hl td{background:color-mix(in srgb,var(--sun) 14%,transparent)}
 <section id="ov">
   <div class="grid" id="kpis"></div>
   <div class="card">
-    <h2>Best ads</h2>
+    <h2>Images doing best</h2>
     <div class="row">
-      <label>Min Hyros leads to rank: <b id="minv">2</b></label>
-      <input type="range" id="min" min="1" max="10" value="2">
-      <span class="note">Ranked by cost per lead (Meta spend ÷ Hyros leads), lowest first.</span>
+      <label>Min Hyros leads to rank: <b id="minv">10</b></label>
+      <input type="range" id="min" min="1" max="40" value="10">
+      <span class="note">Ranked by cost per lead (Meta spend ÷ Hyros leads), lowest first. Click an image to enlarge.</span>
     </div>
-    <div class="tw"><table id="top"></table></div>
+    <div class="gal" id="gal"></div>
   </div>
+  <div class="card"><h2>Best ads, table</h2><div class="tw"><table id="top"></table></div></div>
   <div class="card">
     <h2>Ad sets compared</h2>
-    <div class="row">
-      <div class="seg" id="metric"></div>
-    </div>
+    <div class="row"><div class="seg" id="metric"></div></div>
     <div class="bars" id="bars"></div>
   </div>
+</section>
+
+<section id="dy" class="hide">
+  <div class="card"><h2>Daily</h2><div class="tw"><table id="dytab"></table></div></div>
+  <div class="card"><h2>Running total</h2><div class="tw"><table id="rttab"></table></div></div>
 </section>
 
 <section id="as" class="hide">
@@ -120,151 +135,121 @@ tr.hl td{background:color-mix(in srgb,var(--sun) 14%,transparent)}
       <li>Leads, new leads, purchases and revenue come from Hyros (last click, all sources) for this campaign's ads. Spend, impressions and link clicks come from Meta.</li>
       <li>Link clicks are Meta's link click metric, not all clicks. Cost per link click is spend divided by link clicks.</li>
       <li>New leads are people Hyros had not seen before. Leads also counts existing contacts who registered through these ads.</li>
-      <li>Meta pixel leads (18 total) are lower than Hyros (58) and shown only for comparison.</li>
-      <li>Dates follow the ad account's Pacific time zone. Ad level figures can trail campaign totals slightly because Meta updates them at different times.</li>
-      <li>No purchases or revenue yet, so ROAS is blank.</li>
-      <li>This is a static snapshot from Nov 4, 2026, 7:25 AM Eastern; it does not auto-refresh.</li>
+      <li>Meta pixel leads are lower than Hyros and shown only for comparison.</li>
+      <li>Dates follow the ad account's Pacific time zone. Today is a partial day. Ad level figures can trail campaign totals slightly because Meta updates them at different times.</li>
+      <li><b>How updating works:</b> a GitHub job re-pulls Meta and Hyros every hour and publishes <code>data.json</code>. This page re-reads it every 5 minutes and when you return to the tab. <b>Refresh now</b> fetches the latest published numbers immediately; it cannot force a new Meta/Hyros pull from this public page, so use "Run pull now on GitHub" for that (needs repo access).</li>
     </ul>
+    <p><a id="gh" href="#" target="_blank" rel="noopener">Run pull now on GitHub</a></p>
   </div>
 </section>
 </div>
+<div id="lb" class="hide"><img alt=""></div>
 
 <script>
-// ---- Snapshot data (Nov 4, 2026 7:25 AM ET) ----
-const TOTAL={leads:58,newLeads:36,spend:66.93,clicks:102,impr:3764,metaLeads:18};
-// [ad name, ad set, spend, impressions, link clicks, Hyros leads, new leads, Meta leads]
-const ADS=[
-["sts2532_sew-first-project-afternoon-tracked-footer-solution-sb93-v01","Tracked Footer 15",8.71,433,20,10,8,4],
-["sts2546_sew-first-project-afternoon-charcoal-banner-solution-sb93-v01","Charcoal Banner 17",9.72,600,16,7,4,3],
-["sts2519_never-learned-to-sew-crest-divider-unaware-sb93-v01","Crest Divider 13",5.26,229,4,7,6,2],
-["sts2513_mom-grandma-never-taught-arc-type-problem-sb93-v01","Arc Type 12",4.70,298,9,7,3,0],
-["sts2476_sew-first-project-afternoon-staggered-tiles-solution-sb93-v01","Staggered Tiles 07",8.14,598,11,5,4,2],
-["sts2427_sew-first-project-afternoon-scrim-card-solution-sb93-v01","Scrim Card 02",8.09,388,15,4,1,2],
-["sts2497_sew-first-project-afternoon-date-circled-solution-sb93-v01","Date Circled 10",6.08,347,5,3,2,0],
-["sts2426_sew-first-project-afternoon-announcement-panel-solution-sb93-v01","Announcement Panel 01",2.93,168,2,3,1,0],
-["sts2507_no-machine-needed-double-underline-problem-sb93-v01","Double Underline 11",1.29,59,3,3,3,2],
-["sts2504_sew-first-project-afternoon-double-underline-solution-sb93-v01","Double Underline 11",2.99,168,5,2,2,1],
-["sts2428_sew-first-project-afternoon-editorial-serif-bleed-solution-sb93-v01","Editorial Serif Bleed 03",0.67,41,1,2,1,1],
-["sts2533_never-learned-to-sew-tracked-footer-unaware-sb93-v01","Tracked Footer 15",1.48,52,2,1,0,0],
-["sts2436_mom-grandma-never-taught-native-caption-problem-sb93-v01","Native Caption 05",1.34,60,6,1,0,0],
-["sts2454_sew-first-project-afternoon-six-panel-grid-solution-sb93-v01-4x5","Six Panel Grid 06",0.62,44,1,1,0,0],
-["sts2581_anyone-can-learn-to-sew-native-caption-solution-sb93-v01","Native Caption 05",0.14,6,2,1,1,1],
-["sts2491_never-learned-to-sew-notes-page-unaware-sb93-v01","Notes Page 09",1.67,59,2,0,0,0],
-["sts2539_sew-first-project-afternoon-story-pills-solution-sb93-v01","Story Pills 16",0.48,17,0,0,0,0],
-["sts2540_never-learned-to-sew-story-pills-unaware-sb93-v01","Story Pills 16",0.45,26,0,0,0,0],
-["sts2441_no-machine-needed-offset-shadow-problem-sb93-v01","Offset Shadow 04",0.37,16,0,0,0,0],
-["sts2511_sew-first-project-afternoon-arc-type-solution-sb93-v01","Arc Type 12",0.35,27,1,0,0,0],
-["sts2518_sew-first-project-afternoon-crest-divider-solution-sb93-v01","Crest Divider 13",0.34,20,0,0,0,0],
-["sts2503_sew-with-kids-date-circled-problem-sb93-v01","Date Circled 10",0.32,34,1,0,0,0],
-["sts2525_sew-first-project-afternoon-gold-pill-scrim-solution-sb93-v01","Gold Pill Scrim 14",0.21,10,0,0,0,0],
-["sts2437_mom-grandma-never-taught-offset-shadow-problem-sb93-v01","Offset Shadow 04",0.18,9,0,0,0,0],
-["sts2477_never-learned-to-sew-staggered-tiles-unaware-sb93-v01","Staggered Tiles 07",0.09,6,0,0,0,0],
-["sts2440_no-machine-needed-editorial-serif-bleed-problem-sb93-v01","Editorial Serif Bleed 03",0.05,7,0,0,0,0],
-["sts2435_mom-grandma-never-taught-scrim-card-problem-sb93-v01","Scrim Card 02",0.04,4,0,0,0,0],
-["sts2531_sew-with-kids-gold-pill-scrim-problem-sb93-v01","Gold Pill Scrim 14",0.04,3,0,0,0,0],
-["sts2480_afraid-ruining-fabric-staggered-tiles-problem-sb93-v01","Staggered Tiles 07",0.03,6,0,0,0,0],
-["sts2543_afraid-ruining-fabric-story-pills-problem-sb93-v01","Story Pills 16",0.03,2,0,0,0,0],
-["sts2460_no-machine-needed-six-panel-grid-problem-sb93-v01-4x5","Six Panel Grid 06",0.02,6,0,0,0,0],
-["sts2529_afraid-ruining-fabric-gold-pill-scrim-problem-sb93-v01","Gold Pill Scrim 14",0.02,1,0,0,0,0],
-["sts2448_no-sewing-gene-native-caption-problem-sb93-v01","Native Caption 05",0.01,1,0,0,0,0],
-["sts2508_afraid-ruining-fabric-double-underline-problem-sb93-v01","Double Underline 11",0.01,3,0,0,0,0],
-["sts2490_sew-first-project-afternoon-notes-page-solution-sb93-v01","Notes Page 09",0,0,0,1,0,0],
-["sts2550_afraid-ruining-fabric-charcoal-banner-problem-sb93-v01","Charcoal Banner 17",0,0,0,2,0,0],
-["sts2586_anyone-can-learn-to-sew-story-pills-solution-sb93-v01","Story Pills 16",0,0,0,0,0,0],
-["sts2538_sew-with-kids-tracked-footer-problem-sb93-v01","Tracked Footer 15",0,0,0,2,0,0],
-["sts2495_no-sewing-gene-notes-page-problem-sb93-v01","Notes Page 09",0,0,0,1,0,0],
-["sts2455_sew-first-project-afternoon-six-panel-grid-solution-sb93-v01-1x1","Six Panel Grid 06",0,0,0,2,0,0],
-["sts2468_never-learned-to-sew-editorial-serif-bleed-unaware-sb93-v02","Editorial Serif Bleed 03",0,0,0,0,0,0],
-["sts2430_never-learned-to-sew-announcement-panel-unaware-sb93-v01","Announcement Panel 01",0,0,0,1,0,0]
-].map(a=>({name:a[0],set:a[1],spend:a[2],impr:a[3],clicks:a[4],leads:a[5],nl:a[6],ml:a[7]}));
-// By Ad Set tab as pulled (campaign-level rollup; can differ slightly from ad sums)
-// [set, spend, impr, clicks, leads, new leads]
-const SETS=[
-["Announcement Panel 01",2.93,169,2,3,1],["Arc Type 12",5.05,325,10,7,3],["Charcoal Banner 17",9.72,602,16,7,4],
-["Crest Divider 13",5.60,249,4,7,6],["Date Circled 10",6.40,381,6,3,2],["Double Underline 11",4.29,230,8,5,5],
-["Editorial Serif Bleed 03",0.72,48,1,2,1],["Gold Pill Scrim 14",0.27,14,0,0,0],["Native Caption 05",1.49,67,8,2,1],
-["Notes Page 09",1.67,61,2,0,0],["Offset Shadow 04",0.55,25,0,0,0],["Scrim Card 02",8.13,392,15,4,1],
-["Six Panel Grid 06",0.64,52,1,1,0],["Staggered Tiles 07",8.26,610,11,5,4],["Story Pills 16",0.96,45,0,0,0],
-["Tracked Footer 15",10.19,487,22,11,8]
-].map(a=>({set:a[0],spend:a[1],impr:a[2],clicks:a[3],leads:a[4],nl:a[5]}));
-
-// ---- helpers ----
+const REPO="sts-sewing-webinar-3555733e35";
+let D=null;
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const usd=n=>n==null?"-":"$"+n.toFixed(2);
 const pct=n=>n==null?"-":n.toFixed(2)+"%";
-const int=n=>n.toLocaleString("en-US");
+const int=n=>n==null?"-":n.toLocaleString("en-US");
 const div=(a,b)=>b>0?a/b:null;
-function derive(o){o.cpl=div(o.spend,o.leads);o.cpc=div(o.spend,o.clicks);o.ctr=o.impr>0&&o.clicks>0?o.clicks/o.impr*100:null;return o}
-ADS.forEach(derive);SETS.forEach(derive);
-const avgCPL=TOTAL.spend/TOTAL.leads;
+const short=n=>n.replace(/^Image Set \| /,"").replace(/ \| AC 1$/,"").replace("Annoncement","Announcement");
+const thumb=n=>"creatives/"+encodeURIComponent(n)+".jpg";
+function derive(o){o.cpl=div(o.spend,o.leads);o.cpc=div(o.spend,o.clicks);o.ctr=o.impr>0&&o.clicks>0?o.clicks/o.impr*100:null;o.cpm=o.impr>0?o.spend/o.impr*1000:null;o.roas=o.rev>0&&o.spend>0?o.rev/o.spend:null;return o}
+$("#gh").href="https://github.com/gostrategicmarketing-deployment/"+REPO+"/actions/workflows/refresh.yml";
 
 // theme
 $("#theme").onclick=()=>{const r=document.documentElement;const dark=getComputedStyle(r).getPropertyValue("--bg").trim()==="#191B1F";r.dataset.theme=dark?"light":"dark";try{localStorage.setItem("th",r.dataset.theme)}catch(e){}};
 try{const t=localStorage.getItem("th");if(t)document.documentElement.dataset.theme=t}catch(e){}
-
-// tabs
 $$(".tab").forEach(b=>b.onclick=()=>showTab(b.dataset.t));
-function showTab(t){$$(".tab").forEach(x=>x.classList.toggle("on",x.dataset.t===t));["ov","as","ads","nt"].forEach(id=>$("#"+id).classList.toggle("hide",id!==t))}
+function showTab(t){$$(".tab").forEach(x=>x.classList.toggle("on",x.dataset.t===t));["ov","dy","as","ads","nt"].forEach(id=>$("#"+id).classList.toggle("hide",id!==t))}
+$("#lb").onclick=()=>$("#lb").classList.add("hide");
+function enlarge(n){$("#lb img").src=thumb(n);$("#lb").classList.remove("hide")}
 
-// KPIs
-const kp=[["Leads (Hyros)",TOTAL.leads,`${TOTAL.newLeads} new · ${TOTAL.metaLeads} per Meta pixel`],
-["Cost per lead",usd(avgCPL),"spend ÷ Hyros leads"],["Ad spend (Meta)",usd(TOTAL.spend),"since launch"],
-["Link clicks",TOTAL.clicks,`${usd(TOTAL.spend/TOTAL.clicks)} per click`],["Link CTR",pct(TOTAL.clicks/TOTAL.impr*100),`${int(TOTAL.impr)} impressions`],
-["CPM",usd(TOTAL.spend/TOTAL.impr*1000),"per 1,000 impressions"],["Purchases","-","none yet"],["ROAS","-","no revenue yet"]];
-$("#kpis").innerHTML=kp.map(k=>`<div class="kpi"><div class="l">${k[0]}</div><div class="v">${k[1]}</div><div class="s">${k[2]}</div></div>`).join("");
-
-// Top ads
-function renderTop(){
-  const m=+$("#min").value;$("#minv").textContent=m;
-  const r=ADS.filter(a=>a.leads>=m&&a.spend>0).sort((a,b)=>a.cpl-b.cpl||b.leads-a.leads);
-  $("#top").innerHTML=`<tr><th class="tl">#</th><th class="tl">Ad</th><th class="tl">Ad set</th><th>Spend</th><th>Leads</th><th>CPL</th><th>Clicks</th><th>CPC</th><th>CTR</th></tr>`+
-  (r.length?r.map((a,i)=>`<tr><td class="tl">${i+1}</td><td class="tl nm" title="${a.name}">${a.name}</td><td class="tl"><span class="pill">${a.set}</span></td><td>${usd(a.spend)}</td><td>${a.leads}</td><td class="${a.cpl<=avgCPL?"good":"bad"}">${usd(a.cpl)}</td><td>${a.clicks}</td><td>${usd(a.cpc)}</td><td>${pct(a.ctr)}</td></tr>`).join(""):`<tr><td colspan="9" class="tl note">No ads have that many leads yet.</td></tr>`);
-}
-$("#min").oninput=renderTop;
-
-// Bars
-const METRICS={cpl:["Cost per lead",s=>s.cpl,usd,true],leads:["Leads",s=>s.leads,int,false],spend:["Spend",s=>s.spend,usd,false],cpc:["Cost per click",s=>s.cpc,usd,true],ctr:["Link CTR",s=>s.ctr,pct,false]};
-let metric="cpl";
-$("#metric").innerHTML=Object.entries(METRICS).map(([k,v])=>`<button data-m="${k}" class="${k===metric?"on":""}">${v[0]}</button>`).join("");
-$$("#metric button").forEach(b=>b.onclick=()=>{metric=b.dataset.m;$$("#metric button").forEach(x=>x.classList.toggle("on",x===b));renderBars()});
-function renderBars(){
-  const [lbl,get,fmt,lowGood]=METRICS[metric];
-  const rows=SETS.map(s=>({n:s.set,v:get(s)})).sort((a,b)=>{if(a.v==null)return 1;if(b.v==null)return -1;return lowGood?a.v-b.v:b.v-a.v});
-  const mx=Math.max(...rows.map(r=>r.v||0))||1;
-  $("#bars").innerHTML=rows.map(r=>`<div class="b ${r.v==null?"none":""}"><div class="n" title="${r.n}">${r.n}</div><div class="t"><div class="f" style="width:${r.v==null?0:Math.max(2,r.v/mx*100)}%"></div></div><div class="x">${r.v==null?"-":fmt(r.v)}</div></div>`).join("")+
-  (lowGood?`<div class="note" style="margin-top:8px">Lower is better. Ad sets with no data show "-".</div>`:"");
-}
-
-// sortable tables
+// sortable table helper
 function sortable(el,cols,rows,opts={}){
-  let key=opts.key,asc=opts.asc||false;
+  let key=opts.key,asc=false;
   function draw(){
     const data=[...rows()].sort((a,b)=>{const x=a[key],y=b[key];if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;return(typeof x==="string"?x.localeCompare(y):x-y)*(asc?1:-1)});
     el.innerHTML=`<tr>${cols.map(c=>`<th class="${c.l?"tl ":""}${c.k===key?"s"+(asc?" asc":""):""}" data-k="${c.k}">${c.h}</th>`).join("")}</tr>`+
-    data.map(r=>`<tr data-id="${r.set&&!r.name?r.set:""}" class="${opts.row?opts.row(r):""}">${cols.map(c=>`<td class="${c.l?"tl":""}${c.nm?" nm":""}"${c.nm?` title="${r[c.k]}"`:""}>${c.f?c.f(r[c.k],r):r[c.k]}</td>`).join("")}</tr>`).join("");
-    el.querySelectorAll("th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(k===key)asc=!asc;else{key=k;asc=typeof rows()[0]?.[k]==="string"}draw()});
-    if(opts.onrow)el.querySelectorAll("tr[data-id]").forEach(tr=>tr.onclick=()=>opts.onrow(tr.dataset.id));
+    data.map((r,i)=>`<tr data-i="${i}">${cols.map(c=>`<td class="${c.l?"tl":""}${c.nm?" nm":""}"${c.nm?` title="${r[c.k]}"`:""}>${c.f?c.f(r[c.k],r):r[c.k]}</td>`).join("")}</tr>`).join("");
+    el.querySelectorAll("th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(k===key)asc=!asc;else{key=k;asc=typeof data[0]?.[k]==="string"}draw()});
+    if(opts.onrow)el.querySelectorAll("tr[data-i]").forEach(tr=>tr.onclick=e=>{if(e.target.tagName!=="IMG")opts.onrow(data[+tr.dataset.i])});
     if(opts.after)opts.after(data.length);
   }
   draw();return draw;
 }
-const d=(f)=>v=>v==null?"-":f(v);
-sortable($("#astab"),[
- {k:"set",h:"Ad set",l:1},{k:"spend",h:"Spend",f:usd},{k:"impr",h:"Impr.",f:int},{k:"clicks",h:"Clicks"},{k:"leads",h:"Leads"},{k:"nl",h:"New leads"},
- {k:"cpl",h:"CPL",f:d(usd)},{k:"cpc",h:"CPC",f:d(usd)},{k:"ctr",h:"CTR",f:d(pct)}],()=>SETS,{key:"leads",
- onrow:id=>{$("#fset").value=id;drawAds();showTab("ads")}});
+const f=(fn)=>v=>v==null?"-":fn(v);
 
-// All ads
-const sets=[...new Set(ADS.map(a=>a.set))].sort();
-$("#fset").innerHTML=`<option value="">All ad sets</option>`+sets.map(s=>`<option>${s}</option>`).join("");
-const drawAds=sortable($("#adtab"),[
- {k:"name",h:"Ad",l:1,nm:1},{k:"set",h:"Ad set",l:1},{k:"spend",h:"Spend",f:usd},{k:"impr",h:"Impr.",f:int},{k:"clicks",h:"Clicks"},{k:"leads",h:"Leads"},{k:"nl",h:"New",},{k:"ml",h:"Meta leads"},
- {k:"cpl",h:"CPL",f:d(usd)},{k:"cpc",h:"CPC",f:d(usd)},{k:"ctr",h:"CTR",f:d(pct)}],
- ()=>{const q=$("#q").value.toLowerCase(),s=$("#fset").value,ol=$("#onlyl").checked;return ADS.filter(a=>(!q||a.name.toLowerCase().includes(q))&&(!s||a.set===s)&&(!ol||a.leads>0))},
- {key:"leads",after:n=>$("#cnt").textContent=n+" of "+ADS.length+" ads"});
-["#q","#fset","#onlyl"].forEach(s=>$(s).addEventListener("input",drawAds));
+// ---------- render ----------
+let metric="cpl",AD=[],SETS=[];
+const METRICS={cpl:["Cost per lead",s=>s.cpl,usd,true],leads:["Leads",s=>s.leads,int,false],spend:["Spend",s=>s.spend,usd,false],cpc:["Cost per click",s=>s.cpc,usd,true],ctr:["Link CTR",s=>s.ctr,pct,false]};
+$("#metric").innerHTML=Object.entries(METRICS).map(([k,v])=>`<button data-m="${k}" class="${k===metric?"on":""}">${v[0]}</button>`).join("");
+$$("#metric button").forEach(b=>b.onclick=()=>{metric=b.dataset.m;$$("#metric button").forEach(x=>x.classList.toggle("on",x===b));renderBars()});
 
-renderTop();renderBars();
+function buildSets(){
+  const m={};
+  AD.forEach(a=>{const k=short(a.set);const s=m[k]||(m[k]={set:k,spend:0,impr:0,clicks:0,leads:0,nl:0,sales:0,rev:0});["spend","impr","clicks","leads","nl","sales","rev"].forEach(x=>s[x]+=a[x])});
+  SETS=Object.values(m).map(derive);
+}
+function renderKpis(){
+  const t=derive({...D.total});
+  const k=[["Leads (Hyros)",int(t.leads),`${int(t.nl)} new · ${int(t.ml)} per Meta pixel`],["Cost per lead",usd(t.cpl),"spend ÷ Hyros leads"],["Ad spend (Meta)",usd(t.spend),"since launch"],
+  ["Link clicks",int(t.clicks),`${usd(t.cpc)} per click`],["Link CTR",pct(t.ctr),`${int(t.impr)} impressions`],["CPM",usd(t.cpm),"per 1,000 impressions"],
+  ["Purchases",t.sales?int(t.sales):"-",t.rev?usd(t.rev)+" revenue":"none yet"],["ROAS",t.roas?t.roas.toFixed(2)+"x":"-",t.roas?"revenue ÷ spend":"no revenue yet"]];
+  $("#kpis").innerHTML=k.map(x=>`<div class="kpi"><div class="l">${x[0]}</div><div class="v">${x[1]}</div><div class="s">${x[2]}</div></div>`).join("");
+}
+function renderTop(){
+  const m=+$("#min").value;$("#minv").textContent=m;
+  const avg=D.total.leads?D.total.spend/D.total.leads:null;
+  const r=AD.filter(a=>a.leads>=m&&a.spend>0).sort((a,b)=>a.cpl-b.cpl||b.leads-a.leads);
+  $("#gal").innerHTML=r.slice(0,12).map((a,i)=>`<div class="gc" data-n="${a.name}"><div class="w"><img loading="lazy" src="${thumb(a.name)}" alt="" onerror="this.style.visibility='hidden'"><span class="rk">#${i+1}</span></div><div class="m"><b class="${avg&&a.cpl<=avg?"good":"bad"}">${usd(a.cpl)}</b> / lead<br>${a.leads} leads · ${usd(a.spend)}<br><span class="note">${short(a.set)}</span></div></div>`).join("")||`<div class="note">No ads have that many leads yet.</div>`;
+  $$(".gc").forEach(c=>c.onclick=()=>enlarge(c.dataset.n));
+  $("#top").innerHTML=`<tr><th class="tl">#</th><th class="tl">Image</th><th class="tl">Ad</th><th class="tl">Ad set</th><th>Spend</th><th>Leads</th><th>CPL</th><th>Clicks</th><th>CPC</th><th>CTR</th></tr>`+
+  r.map((a,i)=>`<tr><td class="tl">${i+1}</td><td class="tl"><img class="th" loading="lazy" src="${thumb(a.name)}" onclick="enlarge('${a.name}')" onerror="this.style.visibility='hidden'"></td><td class="tl nm" title="${a.name}">${a.name}</td><td class="tl"><span class="pill">${short(a.set)}</span></td><td>${usd(a.spend)}</td><td>${a.leads}</td><td class="${avg&&a.cpl<=avg?"good":"bad"}">${usd(a.cpl)}</td><td>${a.clicks}</td><td>${usd(a.cpc)}</td><td>${pct(a.ctr)}</td></tr>`).join("");
+}
+function renderBars(){
+  const [lbl,get,fmt,low]=METRICS[metric];
+  const rows=SETS.map(s=>({n:s.set,v:get(s)})).sort((a,b)=>{if(a.v==null)return 1;if(b.v==null)return -1;return low?a.v-b.v:b.v-a.v});
+  const mx=Math.max(...rows.map(r=>r.v||0))||1;
+  $("#bars").innerHTML=rows.map(r=>`<div class="b ${r.v==null?"none":""}"><div class="n" title="${r.n}">${r.n}</div><div class="t"><div class="f" style="width:${r.v==null?0:Math.max(2,r.v/mx*100)}%"></div></div><div class="x">${r.v==null?"-":fmt(r.v)}</div></div>`).join("")+(low?`<div class="note" style="margin-top:8px">Lower is better. Ad sets with no data show "-".</div>`:"");
+}
+function renderDaily(){
+  const days=D.daily.map(derive);
+  $("#dytab").innerHTML=`<tr><th class="tl">Date</th><th>Spend</th><th>Impr.</th><th>Clicks</th><th>Leads</th><th>New</th><th>Purchases</th><th>Revenue</th><th>CPL</th><th>CPC</th><th>CTR</th><th>ROAS</th></tr>`+
+   [...days].reverse().map(d=>`<tr><td class="tl">${d.date}</td><td>${usd(d.spend)}</td><td>${int(d.impr)}</td><td>${d.clicks}</td><td>${d.leads}</td><td>${d.nl}</td><td>${d.sales||"-"}</td><td>${d.rev?usd(d.rev):"-"}</td><td>${usd(d.cpl)}</td><td>${usd(d.cpc)}</td><td>${pct(d.ctr)}</td><td>${d.roas?d.roas.toFixed(2)+"x":"-"}</td></tr>`).join("");
+  let c={spend:0,clicks:0,leads:0,nl:0,sales:0,rev:0};
+  $("#rttab").innerHTML=`<tr><th class="tl">Through</th><th>Spend</th><th>Clicks</th><th>Leads</th><th>New</th><th>Purchases</th><th>Revenue</th><th>CPL</th><th>CPC</th><th>ROAS</th></tr>`+
+   days.map(d=>{for(const k in c)c[k]+=d[k];return `<tr><td class="tl">${d.date}</td><td>${usd(c.spend)}</td><td>${c.clicks}</td><td>${c.leads}</td><td>${c.nl}</td><td>${c.sales||"-"}</td><td>${c.rev?usd(c.rev):"-"}</td><td>${usd(div(c.spend,c.leads))}</td><td>${usd(div(c.spend,c.clicks))}</td><td>${c.rev?(c.rev/c.spend).toFixed(2)+"x":"-"}</td></tr>`}).reverse().join("");
+}
+let drawAds,drawSets;
+function renderTables(){
+  drawSets=sortable($("#astab"),[{k:"set",h:"Ad set",l:1},{k:"spend",h:"Spend",f:usd},{k:"impr",h:"Impr.",f:int},{k:"clicks",h:"Clicks"},{k:"leads",h:"Leads"},{k:"nl",h:"New"},{k:"cpl",h:"CPL",f:f(usd)},{k:"cpc",h:"CPC",f:f(usd)},{k:"ctr",h:"CTR",f:f(pct)}],()=>SETS,{key:"leads",onrow:r=>{$("#fset").value=r.set;drawAds();showTab("ads")}});
+  const cur=$("#fset").value;
+  $("#fset").innerHTML=`<option value="">All ad sets</option>`+[...new Set(AD.map(a=>short(a.set)))].sort().map(s=>`<option>${s}</option>`).join("");$("#fset").value=cur;
+  drawAds=sortable($("#adtab"),[{k:"name",h:"Ad",l:1,nm:1,f:(v,r)=>`<img class="th" loading="lazy" src="${thumb(v)}" onclick="enlarge('${v}')" onerror="this.style.visibility='hidden'"> ${v}`},{k:"sset",h:"Ad set",l:1},{k:"spend",h:"Spend",f:usd},{k:"impr",h:"Impr.",f:int},{k:"clicks",h:"Clicks"},{k:"leads",h:"Leads"},{k:"nl",h:"New"},{k:"ml",h:"Meta leads"},{k:"cpl",h:"CPL",f:f(usd)},{k:"cpc",h:"CPC",f:f(usd)},{k:"ctr",h:"CTR",f:f(pct)}],
+   ()=>{const q=$("#q").value.toLowerCase(),s=$("#fset").value,ol=$("#onlyl").checked;return AD.filter(a=>(!q||a.name.toLowerCase().includes(q))&&(!s||a.sset===s)&&(!ol||a.leads>0))},
+   {key:"leads",after:n=>$("#cnt").textContent=n+" of "+AD.length+" ads"});
+}
+["#q","#fset","#onlyl"].forEach(s=>$(s).addEventListener("input",()=>drawAds&&drawAds()));
+$("#min").oninput=()=>D&&renderTop();
+
+function ago(iso){const m=Math.round((Date.now()-new Date(iso))/60000);return m<1?"just now":m<60?m+" min ago":Math.floor(m/60)+" h "+(m%60)+" min ago"}
+function paintStamp(){if(!D)return;const m=(Date.now()-new Date(D.pulled_at))/60000;$("#upd").textContent="Data pulled "+ago(D.pulled_at)+" ("+new Date(D.pulled_at).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})+")";$("#dot").classList.toggle("stale",m>150)}
+function apply(d){D=d;AD=d.ads.map(a=>derive({...a,sset:short(a.set)}));buildSets();renderKpis();renderTop();renderBars();renderDaily();renderTables();paintStamp()}
+async function load(manual){
+  const b=$("#rf");if(manual){b.disabled=true;b.textContent="Checking…"}
+  try{
+    const r=await fetch("data.json?cb="+Date.now(),{cache:"no-store"});const d=await r.json();
+    const fresh=!D||d.pulled_at!==D.pulled_at;if(fresh)apply(d);else paintStamp();
+    if(manual)b.textContent=fresh?"Updated":"Already latest";
+  }catch(e){if(manual)b.textContent="Couldn't load";$("#upd").textContent=D?$("#upd").textContent:"Couldn't load data"}
+  if(manual)setTimeout(()=>{b.disabled=false;b.textContent="Refresh now"},1800);
+}
+$("#rf").onclick=()=>load(true);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)load()});
+setInterval(()=>load(),5*60*1000);setInterval(paintStamp,30000);
+load();
 </script>
 </body>
 </html>
