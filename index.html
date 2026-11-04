@@ -88,7 +88,8 @@ tr.hl td{background:color-mix(in srgb,var(--sun) 14%,transparent)}
 </div>
 
 <section id="ov">
-  <div class="grid" id="kpis"></div>
+  <div class="card"><h2>Today <span class="note" id="dlbl"></span></h2><div class="grid" id="kd" style="margin:0"></div></div>
+  <div class="card"><h2>Running total <span class="note" id="rlbl"></span></h2><div class="grid" id="kpis" style="margin:0"></div></div>
   <div class="card">
     <h2>Images doing best</h2>
     <div class="row">
@@ -192,12 +193,18 @@ function buildSets(){
   AD.forEach(a=>{const k=short(a.set);const s=m[k]||(m[k]={set:k,spend:0,impr:0,clicks:0,leads:0,nl:0,sales:0,rev:0});["spend","impr","clicks","leads","nl","sales","rev"].forEach(x=>s[x]+=a[x])});
   SETS=Object.values(m).map(derive);
 }
-function renderKpis(){
-  const t=derive({...D.total});
-  const k=[["Leads (Hyros)",int(t.leads),`${int(t.nl)} new · ${int(t.ml)} per Meta pixel`],["Cost per lead",usd(t.cpl),"spend ÷ Hyros leads"],["Ad spend (Meta)",usd(t.spend),"since launch"],
+function kpiRows(t){
+  return [["Leads (Hyros)",int(t.leads),""],["Cost per lead",usd(t.cpl),"spend ÷ Hyros leads"],["Ad spend (Meta)",usd(t.spend),""],
   ["Link clicks",int(t.clicks),`${usd(t.cpc)} per click`],["Link CTR",pct(t.ctr),`${int(t.impr)} impressions`],["CPM",usd(t.cpm),"per 1,000 impressions"],
-  ["Purchases",t.sales?int(t.sales):"-",t.rev?usd(t.rev)+" revenue":"none yet"],["ROAS",t.roas?t.roas.toFixed(2)+"x":"-",t.roas?"revenue ÷ spend":"no revenue yet"]];
-  $("#kpis").innerHTML=k.map(x=>`<div class="kpi"><div class="l">${x[0]}</div><div class="v">${x[1]}</div><div class="s">${x[2]}</div></div>`).join("");
+  ["Purchases",t.sales?int(t.sales):"-",t.rev?usd(t.rev)+" revenue":"none yet"],["ROAS",t.roas?t.roas.toFixed(2)+"x":"-",t.roas?"revenue ÷ spend":"no revenue yet"]]
+  .map(x=>`<div class="kpi"><div class="l">${x[0]}</div><div class="v">${x[1]}</div><div class="s">${x[2]||"&nbsp;"}</div></div>`).join("");
+}
+function renderKpis(){
+  const days=D.daily,last=days[days.length-1];
+  $("#kpis").innerHTML=kpiRows(derive({...D.total}));
+  $("#rlbl").textContent="since launch, "+D.range[0]+" to "+D.range[1];
+  $("#kd").innerHTML=last?kpiRows(derive({...last})):'<div class="note">No data for today yet.</div>';
+  $("#dlbl").textContent=last?"("+last.date+", partial day until midnight Pacific)":"";
 }
 function renderTop(){
   const m=+$("#min").value;$("#minv").textContent=m;
