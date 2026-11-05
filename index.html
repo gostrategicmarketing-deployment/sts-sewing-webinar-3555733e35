@@ -80,7 +80,7 @@ tr.hl td{background:color-mix(in srgb,var(--sun) 14%,transparent)}
 <header>
   <div>
     <h1>STS Sewing Webinar 2026</h1>
-    <div class="sub">TOF | Sewing Webinar 2026 | ABO · School of Traditional Skills ad account · launched Nov 4, 2026</div>
+    <div class="sub">TOF | Sewing Webinar 2026 | ABO + CBO · School of Traditional Skills ad account · launched Nov 4, 2026</div>
     <div class="sub live"><span class="dot" id="dot"></span><span id="ppmsg" class="note"></span><span id="upd">Loading…</span><span class="note">Auto-updates hourly · Meta spend/clicks, Hyros leads (last click)</span></div>
   </div>
   <div class="live"><button class="btn hide" id="pp" title="Pull Meta + Hyros now and publish to GitHub">Pull &amp; publish</button><button class="btn" id="rf">Refresh now</button><button class="btn" id="theme">Theme</button></div>
@@ -140,7 +140,7 @@ tr.hl td{background:color-mix(in srgb,var(--sun) 14%,transparent)}
   <div class="card">
     <h2>Notes</h2>
     <ul>
-      <li>Leads, new leads, purchases and revenue come from Hyros (last click, all sources) for this campaign's ads. Spend, impressions and link clicks come from Meta.</li>
+      <li>Leads, new leads, purchases and revenue come from Hyros (last click, all sources) for both campaigns' ads (ABO and CBO). Spend, impressions and link clicks come from Meta.</li>
       <li>Link clicks are Meta's link click metric, not all clicks. Cost per link click is spend divided by link clicks.</li>
       <li>New leads are people Hyros had not seen before. Leads also counts existing contacts who registered through these ads.</li>
       <li>Meta pixel leads are lower than Hyros and shown only for comparison.</li>
@@ -162,7 +162,7 @@ const usd=n=>n==null?"-":"$"+n.toFixed(2);
 const pct=n=>n==null?"-":n.toFixed(2)+"%";
 const int=n=>n==null?"-":n.toLocaleString("en-US");
 const div=(a,b)=>b>0?a/b:null;
-const short=n=>n.replace(/^Image Set \| /,"").replace(/ \| AC 1$/,"").replace("Annoncement","Announcement");
+const short=n=>n.replace(/^Image Set \| /,"").replace(/ \| AC 1 - Copy$/," (CBO)").replace(/ \| AC 1$/,"").replace("Annoncement","Announcement");
 const thumb=n=>"creatives/"+encodeURIComponent(n)+".jpg";
 function derive(o){o.cpl=div(o.spend,o.leads);o.cpc=div(o.spend,o.clicks);o.ctr=o.impr>0&&o.clicks>0?o.clicks/o.impr*100:null;o.cpm=o.impr>0?o.spend/o.impr*1000:null;o.roas=o.rev>0&&o.spend>0?o.rev/o.spend:null;return o}
 $("#gh").href="https://github.com/gostrategicmarketing-deployment/"+REPO+"/actions/workflows/refresh.yml";
