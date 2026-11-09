@@ -141,7 +141,7 @@ tr.hl td{background:color-mix(in srgb,var(--sun) 14%,transparent)}
     <h2>Notes</h2>
     <ul>
       <li>Leads, new leads, purchases and revenue come from Hyros (last click, all sources) for both campaigns' ads (ABO and CBO). Spend, impressions and link clicks come from Meta.</li>
-      <li><b>Registrations (Kit)</b> is the true registration count: active subscribers on the Kit form "[Webinar] Sewing November 2026 | Registration Form + SMS - Ads" (the paid-ads form only; the Site form is excluded). It is read from Kit by hand into <code>kit.json</code>, so the hourly Meta/Hyros pull does not change it. People who registered and then unsubscribed are not counted.</li>
+      <li><b>Registrations (Kit)</b> is the true registration count: active subscribers on the Kit form "[Webinar] Sewing November 2026 | Registration Form + SMS - Ads" (the paid-ads form only; the Site form is excluded). It updates when you click <b>Pull &amp; publish</b> on the local copy (needs <code>kit_key.txt</code>, a Kit API key, in the dashboard folder); the hourly GitHub pull does not change it, so check the "as of" time on the tile. People who registered and then unsubscribed are not counted.</li>
       <li>Link clicks are Meta's link click metric, not all clicks. Cost per link click is spend divided by link clicks.</li>
       <li>New leads are people Hyros had not seen before. Leads also counts existing contacts who registered through these ads.</li>
       <li>Meta pixel leads are lower than Hyros and shown only for comparison.</li>
@@ -165,7 +165,7 @@ const int=n=>n==null?"-":n.toLocaleString("en-US");
 const div=(a,b)=>b>0?a/b:null;
 const short=n=>n.replace(/^Image Set \| /,"").replace(/ \| AC 1 - Copy$/," (CBO)").replace(/ \| AC 1$/,"").replace("Annoncement","Announcement");
 const thumb=n=>"creatives/"+encodeURIComponent(n)+".jpg";
-function derive(o){o.cpl=div(o.spend,o.leads);o.cpc=div(o.spend,o.clicks);o.ctr=o.impr>0&&o.clicks>0?o.clicks/o.impr*100:null;o.cpm=o.impr>0?o.spend/o.impr*1000:null;o.roas=o.rev>0&&o.spend>0?o.rev/o.spend:null;return o}
+function derive(o){o.cpl=div(o.spend,o.leads);o.cpc=div(o.spend,o.clicks);o.ctr=o.impr>0&&o.clicks>0?o.clicks/o.impr*100:null;o.cpm=o.impr>0?o.spend/o.impr*1000:null;o.cvr=o.clicks>0&&o.leads>0?o.leads/o.clicks*100:null;o.pcr=o.leads>0&&o.sales>0?o.sales/o.leads*100:null;o.roas=o.rev>0&&o.spend>0?o.rev/o.spend:null;return o}
 $("#gh").href="https://github.com/gostrategicmarketing-deployment/"+REPO+"/actions/workflows/refresh.yml";
 
 // theme
@@ -206,7 +206,7 @@ function kpiRows(t,k){
   const kr=k&&k.registrations?[["Registrations (Kit)",int(k.registrations),"Ads form · as of "+new Date(k.pulled_at).toLocaleString([],{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})],["Cost per registration",usd(div(t.spend,k.registrations)),"Meta spend ÷ Kit registrations"]]:[];
   return [...kr,["Leads (Hyros)",int(t.leads),""],["Cost per lead",usd(t.cpl),"spend ÷ Hyros leads"],["Ad spend (Meta)",usd(t.spend),""],
   ["Link clicks",int(t.clicks),`${usd(t.cpc)} per click`],["Link CTR",pct(t.ctr),`${int(t.impr)} impressions`],["CPM",usd(t.cpm),"per 1,000 impressions"],
-  ["Purchases",t.sales?int(t.sales):"-",t.rev?usd(t.rev)+" revenue":"none yet"],["ROAS",t.roas?t.roas.toFixed(2)+"x":"-",t.roas?"revenue ÷ spend":"no revenue yet"]]
+  ["Conversion rate",pct(t.cvr),"Hyros leads ÷ link clicks"],["Lead → purchase",t.pcr?t.pcr.toFixed(2)+"%":"-","purchases ÷ leads"],["Purchases",t.sales?int(t.sales):"-",t.rev?usd(t.rev)+" revenue":"none yet"],["ROAS",t.roas?t.roas.toFixed(2)+"x":"-",t.roas?"revenue ÷ spend":"no revenue yet"]]
   .map(x=>`<div class="kpi"><div class="l">${x[0]}</div><div class="v">${x[1]}</div><div class="s">${x[2]||"&nbsp;"}</div></div>`).join("");
 }
 function renderKpis(){
@@ -233,18 +233,18 @@ function renderBars(){
 }
 function renderDaily(){
   const days=D.daily.map(derive);
-  $("#dytab").innerHTML=`<tr><th class="tl">Date</th><th>Spend</th><th>Impr.</th><th>Clicks</th><th>Leads</th><th>New</th><th>Purchases</th><th>Revenue</th><th>CPL</th><th>CPC</th><th>CTR</th><th>ROAS</th></tr>`+
-   [...days].reverse().map(d=>`<tr><td class="tl">${d.date}</td><td>${usd(d.spend)}</td><td>${int(d.impr)}</td><td>${d.clicks}</td><td>${d.leads}</td><td>${d.nl}</td><td>${d.sales||"-"}</td><td>${d.rev?usd(d.rev):"-"}</td><td>${usd(d.cpl)}</td><td>${usd(d.cpc)}</td><td>${pct(d.ctr)}</td><td>${d.roas?d.roas.toFixed(2)+"x":"-"}</td></tr>`).join("");
+  $("#dytab").innerHTML=`<tr><th class="tl">Date</th><th>Spend</th><th>Impr.</th><th>Clicks</th><th>Leads</th><th>New</th><th>Purchases</th><th>Revenue</th><th>CPL</th><th>CPC</th><th>CTR</th><th>Conv. rate</th><th>ROAS</th></tr>`+
+   [...days].reverse().map(d=>`<tr><td class="tl">${d.date}</td><td>${usd(d.spend)}</td><td>${int(d.impr)}</td><td>${d.clicks}</td><td>${d.leads}</td><td>${d.nl}</td><td>${d.sales||"-"}</td><td>${d.rev?usd(d.rev):"-"}</td><td>${usd(d.cpl)}</td><td>${usd(d.cpc)}</td><td>${pct(d.ctr)}</td><td>${pct(d.cvr)}</td><td>${d.roas?d.roas.toFixed(2)+"x":"-"}</td></tr>`).join("");
   let c={spend:0,clicks:0,leads:0,nl:0,sales:0,rev:0};
   $("#rttab").innerHTML=`<tr><th class="tl">Through</th><th>Spend</th><th>Clicks</th><th>Leads</th><th>New</th><th>Purchases</th><th>Revenue</th><th>CPL</th><th>CPC</th><th>ROAS</th></tr>`+
    days.map(d=>{for(const k in c)c[k]+=d[k];return `<tr><td class="tl">${d.date}</td><td>${usd(c.spend)}</td><td>${c.clicks}</td><td>${c.leads}</td><td>${c.nl}</td><td>${c.sales||"-"}</td><td>${c.rev?usd(c.rev):"-"}</td><td>${usd(div(c.spend,c.leads))}</td><td>${usd(div(c.spend,c.clicks))}</td><td>${c.rev?(c.rev/c.spend).toFixed(2)+"x":"-"}</td></tr>`}).reverse().join("");
 }
 let drawAds,drawSets;
 function renderTables(){
-  drawSets=sortable($("#astab"),[{k:"set",h:"Ad set",l:1},{k:"spend",h:"Spend",f:usd},{k:"impr",h:"Impr.",f:int},{k:"clicks",h:"Clicks"},{k:"leads",h:"Leads"},{k:"nl",h:"New"},{k:"cpl",h:"CPL",f:f(usd)},{k:"cpc",h:"CPC",f:f(usd)},{k:"ctr",h:"CTR",f:f(pct)}],()=>SETS,{key:"leads",onrow:r=>{$("#fset").value=r.set;drawAds();showTab("ads")}});
+  drawSets=sortable($("#astab"),[{k:"set",h:"Ad set",l:1},{k:"spend",h:"Spend",f:usd},{k:"impr",h:"Impr.",f:int},{k:"clicks",h:"Clicks"},{k:"leads",h:"Leads"},{k:"nl",h:"New"},{k:"cpl",h:"CPL",f:f(usd)},{k:"cpc",h:"CPC",f:f(usd)},{k:"ctr",h:"CTR",f:f(pct)},{k:"cvr",h:"Conv. rate",f:f(pct)}],()=>SETS,{key:"leads",onrow:r=>{$("#fset").value=r.set;drawAds();showTab("ads")}});
   const cur=$("#fset").value;
   $("#fset").innerHTML=`<option value="">All ad sets</option>`+[...new Set(AD.map(a=>short(a.set)))].sort().map(s=>`<option>${s}</option>`).join("");$("#fset").value=cur;
-  drawAds=sortable($("#adtab"),[{k:"name",h:"Ad",l:1,nm:1,f:(v,r)=>`<img class="th" loading="lazy" src="${thumb(v)}" onclick="enlarge('${v}')" onerror="this.style.visibility='hidden'"> ${v}`},{k:"sset",h:"Ad set",l:1},{k:"spend",h:"Spend",f:usd},{k:"impr",h:"Impr.",f:int},{k:"clicks",h:"Clicks"},{k:"leads",h:"Leads"},{k:"nl",h:"New"},{k:"ml",h:"Meta leads"},{k:"cpl",h:"CPL",f:f(usd)},{k:"cpc",h:"CPC",f:f(usd)},{k:"ctr",h:"CTR",f:f(pct)}],
+  drawAds=sortable($("#adtab"),[{k:"name",h:"Ad",l:1,nm:1,f:(v,r)=>`<img class="th" loading="lazy" src="${thumb(v)}" onclick="enlarge('${v}')" onerror="this.style.visibility='hidden'"> ${v}`},{k:"sset",h:"Ad set",l:1},{k:"spend",h:"Spend",f:usd},{k:"impr",h:"Impr.",f:int},{k:"clicks",h:"Clicks"},{k:"leads",h:"Leads"},{k:"nl",h:"New"},{k:"ml",h:"Meta leads"},{k:"cpl",h:"CPL",f:f(usd)},{k:"cpc",h:"CPC",f:f(usd)},{k:"ctr",h:"CTR",f:f(pct)},{k:"cvr",h:"Conv. rate",f:f(pct)}],
    ()=>{const q=$("#q").value.toLowerCase(),s=$("#fset").value,ol=$("#onlyl").checked;return AD.filter(a=>(!q||a.name.toLowerCase().includes(q))&&(!s||a.sset===s)&&(!ol||a.leads>0))},
    {key:"leads",after:n=>$("#cnt").textContent=n+" of "+AD.length+" ads"});
 }
