@@ -141,7 +141,6 @@ tr.hl td{background:color-mix(in srgb,var(--sun) 14%,transparent)}
     <h2>Notes</h2>
     <ul>
       <li>Leads, new leads, purchases and revenue come from Hyros (last click, all sources) for both campaigns' ads (ABO and CBO). Spend, impressions and link clicks come from Meta.</li>
-      <li><b>Registrations (Kit)</b> is the true registration count: active subscribers on the Kit form "[Webinar] Sewing November 2026 | Registration Form + SMS - Ads" (the paid-ads form only; the Site form is excluded). It updates when you click <b>Pull &amp; publish</b> on the local copy (needs <code>kit_key.txt</code>, a Kit API key, in the dashboard folder); the hourly GitHub pull does not change it, so check the "as of" time on the tile. People who registered and then unsubscribed are not counted.</li>
       <li>Link clicks are Meta's link click metric, not all clicks. Cost per link click is spend divided by link clicks.</li>
       <li>New leads are people Hyros had not seen before. Leads also counts existing contacts who registered through these ads.</li>
       <li>Meta pixel leads are lower than Hyros and shown only for comparison.</li>
@@ -202,16 +201,15 @@ function buildSets(){
   AD.forEach(a=>{const k=short(a.set);const s=m[k]||(m[k]={set:k,spend:0,impr:0,clicks:0,leads:0,nl:0,sales:0,rev:0});["spend","impr","clicks","leads","nl","sales","rev"].forEach(x=>s[x]+=a[x])});
   SETS=Object.values(m).map(derive);
 }
-function kpiRows(t,k){
-  const kr=k&&k.registrations?[["Registrations (Kit)",int(k.registrations),"Ads form · as of "+new Date(k.pulled_at).toLocaleString([],{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})],["Cost per registration",usd(div(t.spend,k.registrations)),"Meta spend ÷ Kit registrations"]]:[];
-  return [...kr,["Leads (Hyros)",int(t.leads),""],["Cost per lead",usd(t.cpl),"spend ÷ Hyros leads"],["Ad spend (Meta)",usd(t.spend),""],
+function kpiRows(t){
+  return [["Leads (Hyros)",int(t.leads),""],["Cost per lead",usd(t.cpl),"spend ÷ Hyros leads"],["Ad spend (Meta)",usd(t.spend),""],
   ["Link clicks",int(t.clicks),`${usd(t.cpc)} per click`],["Link CTR",pct(t.ctr),`${int(t.impr)} impressions`],["CPM",usd(t.cpm),"per 1,000 impressions"],
   ["Conversion rate",pct(t.cvr),"Hyros leads ÷ link clicks"],["Lead → purchase",t.pcr?t.pcr.toFixed(2)+"%":"-","purchases ÷ leads"],["Purchases",t.sales?int(t.sales):"-",t.rev?usd(t.rev)+" revenue":"none yet"],["ROAS",t.roas?t.roas.toFixed(2)+"x":"-",t.roas?"revenue ÷ spend":"no revenue yet"]]
   .map(x=>`<div class="kpi"><div class="l">${x[0]}</div><div class="v">${x[1]}</div><div class="s">${x[2]||"&nbsp;"}</div></div>`).join("");
 }
 function renderKpis(){
   const days=D.daily,last=days[days.length-1];
-  $("#kpis").innerHTML=kpiRows(derive({...D.total}),KIT);
+  $("#kpis").innerHTML=kpiRows(derive({...D.total}));
   $("#rlbl").textContent="since launch, "+D.range[0]+" to "+D.range[1];
   $("#kd").innerHTML=last?kpiRows(derive({...last})):'<div class="note">No data for today yet.</div>';
   $("#dlbl").textContent=last?"("+last.date+", partial day until midnight Pacific)":"";
@@ -253,9 +251,6 @@ $("#min").oninput=()=>D&&renderTop();
 
 function ago(iso){const m=Math.round((Date.now()-new Date(iso))/60000);return m<1?"just now":m<60?m+" min ago":Math.floor(m/60)+" h "+(m%60)+" min ago"}
 function paintStamp(){if(!D)return;const m=(Date.now()-new Date(D.pulled_at))/60000;$("#upd").textContent="Data pulled "+ago(D.pulled_at)+" ("+new Date(D.pulled_at).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})+")";$("#dot").classList.toggle("stale",m>150)}
-let KIT=null;
-async function loadKit(){try{const r=await fetch("kit.json?cb="+Date.now(),{cache:"no-store"});if(r.ok){KIT=await r.json();if(D)renderKpis()}}catch(e){}}
-loadKit();
 function apply(d){D=d;AD=d.ads.map(a=>derive({...a,sset:short(a.set)}));buildSets();renderKpis();renderTop();renderBars();renderDaily();renderTables();paintStamp()}
 async function load(manual,force){
   const b=$("#rf");if(manual){b.disabled=true;b.textContent="Checking…"}
@@ -266,7 +261,7 @@ async function load(manual,force){
   }catch(e){if(manual)b.textContent="Couldn't load";$("#upd").textContent=D?$("#upd").textContent:"Couldn't load data"}
   if(manual)setTimeout(()=>{b.disabled=false;b.textContent="Refresh now"},1800);
 }
-$("#rf").onclick=()=>{loadKit();load(true)};
+$("#rf").onclick=()=>load(true);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)load()});
 setInterval(()=>load(),5*60*1000);setInterval(paintStamp,30000);
 load();
