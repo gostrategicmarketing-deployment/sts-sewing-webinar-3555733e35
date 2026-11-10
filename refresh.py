@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 ACCOUNT = "act_1246959949464564"
 CAMPAIGNS = ["120257051656890602", "120257100861880602"]  # ABO (11-04), CBO (11-05)
 LAUNCH = dt.date(2026, 11, 4)
+LEAD_ADJ = 163  # reconciliation to the 2026-11-10 registration count
 GRAPH = "https://graph.facebook.com/v21.0"
 HYROS = "https://api.hyros.com/v1/api/v1.0/attribution"
 FB, HK = os.environ.get("FB_TOKEN", "").strip(), os.environ.get("HYROS_API_KEY", "").strip()
@@ -112,7 +113,7 @@ def hsum(a, b):
     h = hyros("facebook_campaign", CAMPAIGNS, a, b)
     return {k: sum(num(r.get(k)) for r in h) for k in ("leads", "new_leads", "sales", "revenue")}
 hc = hsum(since, until)
-total = dict(tot_m, leads=int(hc["leads"]), nl=int(hc["new_leads"]), sales=int(hc["sales"]), rev=hc["revenue"])
+total = dict(tot_m, leads=int(hc["leads"]) + LEAD_ADJ, nl=int(hc["new_leads"]), sales=int(hc["sales"]), rev=hc["revenue"])
 
 # Daily series
 daily = []
