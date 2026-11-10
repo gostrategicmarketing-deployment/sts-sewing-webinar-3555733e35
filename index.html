@@ -95,8 +95,9 @@ tr.hl td{background:color-mix(in srgb,var(--sun) 14%,transparent)}
 </div>
 
 <section id="ov">
-  <div class="card"><h2>Today <span class="note" id="dlbl"></span></h2><div class="grid" id="kd" style="margin:0"></div></div>
-  <div class="card"><h2>Running total <span class="note" id="rlbl"></span></h2><div class="grid" id="kpis" style="margin:0"></div></div>
+  <div class="card"><h2>TOF today <span class="note" id="dlbl"></span></h2><div class="grid" id="kd" style="margin:0"></div></div>
+  <div class="card"><h2>TOF running total <span class="note" id="rlbl"></span></h2><div class="grid" id="kpis" style="margin:0"></div></div>
+  <div class="card"><h2>MOF + BOF <span class="note" id="mlbl">retargeting, kept out of every TOF number on this page</span></h2><div class="grid" id="kmb" style="margin:0 0 12px"></div><div class="tw"><table id="mbtab"></table></div></div>
   <div class="card">
     <h2>Images doing best</h2>
     <div class="row">
@@ -140,6 +141,7 @@ tr.hl td{background:color-mix(in srgb,var(--sun) 14%,transparent)}
   <div class="card">
     <h2>Notes</h2>
     <ul>
+      <li><b>TOF only in the headline numbers.</b> Today, Running total, Daily, Ad sets and All ads cover only the TOF | Sewing Webinar 2026 campaigns. MOF and BOF campaigns (found by name, e.g. "MOF | Sewing Webinar 2026 | Sew-Along Bundle") appear only in the MOF + BOF box, with their own spend, Hyros purchases and revenue.</li>
       <li>Leads, new leads, purchases and revenue come from Hyros (last click, all sources) for both campaigns' ads (ABO and CBO). Spend, impressions and link clicks come from Meta.</li>
       <li>Link clicks are Meta's link click metric, not all clicks. Cost per link click is spend divided by link clicks.</li>
       <li>New leads are people Hyros had not seen before. Leads also counts existing contacts who registered through these ads.</li>
@@ -214,6 +216,19 @@ function renderKpis(){
   $("#kd").innerHTML=last?kpiRows(derive({...last})):'<div class="note">No data for today yet.</div>';
   $("#dlbl").textContent=last?"("+last.date+", partial day until midnight Pacific)":"";
 }
+function renderRt(){
+  const c=D.rt;
+  if(!c){$("#kmb").innerHTML='<div class="note">This pull has no MOF/BOF data yet. Click Pull &amp; publish to fetch it.</div>';$("#mbtab").innerHTML="";return}
+  if(!c.length){$("#kmb").innerHTML='<div class="note">No MOF or BOF "Sewing Webinar 2026" campaigns found in the ad account.</div>';$("#mbtab").innerHTML="";return}
+  const ks=["spend","impr","clicks","ml","leads","nl","sales","rev"],t={},td={};ks.forEach(k=>{t[k]=0;td[k]=0});
+  c.forEach(x=>ks.forEach(k=>{t[k]+=x[k];td[k]+=x.today[k]}));derive(t);
+  const cpp=(o)=>div(o.spend,o.sales);
+  $("#kmb").innerHTML=[["Spend (Meta)",usd(t.spend),`${usd(td.spend)} today`],["Purchases (Hyros)",int(t.sales),`${int(td.sales)} today`],["Revenue",usd(t.rev),`${usd(td.rev)} today`],
+   ["ROAS",t.roas?t.roas.toFixed(2)+"x":"-","revenue ÷ spend"],["Cost per purchase",usd(cpp(t)),"spend ÷ purchases"],["Link clicks",int(t.clicks),`${usd(t.cpc)} per click`],["CPM",usd(t.cpm),`${int(t.impr)} impressions`]]
+   .map(x=>`<div class="kpi"><div class="l">${x[0]}</div><div class="v">${x[1]}</div><div class="s">${x[2]}</div></div>`).join("");
+  $("#mbtab").innerHTML=`<tr><th class="tl">Stage</th><th class="tl">Campaign</th><th class="tl">Status</th><th>Today</th><th>Spend</th><th>Clicks</th><th>CPC</th><th>Leads</th><th>Purchases</th><th>Revenue</th><th>Cost/purchase</th><th>ROAS</th></tr>`+
+   c.map(x=>{derive(x);return `<tr><td class="tl"><span class="pill">${x.stage}</span></td><td class="tl nm" title="${x.name}">${x.name.replace(/^(MOF|BOF) \| Sewing Webinar 2026 \| /,"")}</td><td class="tl">${x.status.toLowerCase().replace(/_/g," ")}</td><td>${usd(x.today.spend)}</td><td>${usd(x.spend)}</td><td>${int(x.clicks)}</td><td>${usd(x.cpc)}</td><td>${int(x.leads)}</td><td>${x.sales||"-"}</td><td>${x.rev?usd(x.rev):"-"}</td><td>${usd(cpp(x))}</td><td>${x.roas?x.roas.toFixed(2)+"x":"-"}</td></tr>`}).join("");
+}
 function renderTop(){
   const m=+$("#min").value;$("#minv").textContent=m;
   const avg=D.total.leads?D.total.spend/D.total.leads:null;
@@ -251,7 +266,7 @@ $("#min").oninput=()=>D&&renderTop();
 
 function ago(iso){const m=Math.round((Date.now()-new Date(iso))/60000);return m<1?"just now":m<60?m+" min ago":Math.floor(m/60)+" h "+(m%60)+" min ago"}
 function paintStamp(){if(!D)return;const m=(Date.now()-new Date(D.pulled_at))/60000;$("#upd").textContent="Data pulled "+ago(D.pulled_at)+" ("+new Date(D.pulled_at).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})+")";$("#dot").classList.toggle("stale",m>150)}
-function apply(d){D=d;AD=d.ads.map(a=>derive({...a,sset:short(a.set)}));buildSets();renderKpis();renderTop();renderBars();renderDaily();renderTables();paintStamp()}
+function apply(d){D=d;AD=d.ads.map(a=>derive({...a,sset:short(a.set)}));buildSets();renderKpis();renderRt();renderTop();renderBars();renderDaily();renderTables();paintStamp()}
 async function load(manual,force){
   const b=$("#rf");if(manual){b.disabled=true;b.textContent="Checking…"}
   try{
