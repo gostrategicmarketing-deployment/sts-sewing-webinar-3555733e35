@@ -166,7 +166,7 @@ const int=n=>n==null?"-":n.toLocaleString("en-US");
 const div=(a,b)=>b>0?a/b:null;
 const short=n=>n.replace(/^Image Set \| /,"").replace(/ \| AC 1 - Copy$/," (CBO)").replace(/ \| AC 1$/,"").replace("Annoncement","Announcement");
 const thumb=n=>"creatives/"+encodeURIComponent(n)+".jpg";
-function derive(o){o.cpl=div(o.spend,o.leads);o.cpc=div(o.spend,o.clicks);o.ctr=o.impr>0&&o.clicks>0?o.clicks/o.impr*100:null;o.cpm=o.impr>0?o.spend/o.impr*1000:null;o.cvr=o.clicks>0&&o.leads>0?o.leads/o.clicks*100:null;o.pcr=o.leads>0&&o.sales>0?o.sales/o.leads*100:null;o.roas=o.rev>0&&o.spend>0?o.rev/o.spend:null;return o}
+function derive(o){o.cpl=o.spend>0?div(o.spend,o.leads):null;o.cpc=div(o.spend,o.clicks);o.ctr=o.impr>0&&o.clicks>0?o.clicks/o.impr*100:null;o.cpm=o.impr>0?o.spend/o.impr*1000:null;o.cvr=o.clicks>0&&o.leads>0?o.leads/o.clicks*100:null;o.pcr=o.leads>0&&o.sales>0?o.sales/o.leads*100:null;o.roas=o.rev>0&&o.spend>0?o.rev/o.spend:null;return o}
 $("#gh").href="https://github.com/gostrategicmarketing-deployment/"+REPO+"/actions/workflows/refresh.yml";
 
 // theme
@@ -250,7 +250,7 @@ function renderDaily(){
    [...days].reverse().map(d=>`<tr><td class="tl">${d.date}</td><td>${usd(d.spend)}</td><td>${int(d.impr)}</td><td>${d.clicks}</td><td>${d.leads}</td><td>${d.nl}</td><td>${d.sales||"-"}</td><td>${d.rev?usd(d.rev):"-"}</td><td>${usd(d.cpl)}</td><td>${usd(d.cpc)}</td><td>${pct(d.ctr)}</td><td>${pct(d.cvr)}</td><td>${d.roas?d.roas.toFixed(2)+"x":"-"}</td></tr>`).join("");
   let c={spend:0,clicks:0,leads:0,nl:0,sales:0,rev:0};
   $("#rttab").innerHTML=`<tr><th class="tl">Through</th><th>Spend</th><th>Clicks</th><th>Leads</th><th>New</th><th>Purchases</th><th>Revenue</th><th>CPL</th><th>CPC</th><th>ROAS</th></tr>`+
-   days.map(d=>{for(const k in c)c[k]+=d[k];return `<tr><td class="tl">${d.date}</td><td>${usd(c.spend)}</td><td>${c.clicks}</td><td>${c.leads}</td><td>${c.nl}</td><td>${c.sales||"-"}</td><td>${c.rev?usd(c.rev):"-"}</td><td>${usd(div(c.spend,c.leads))}</td><td>${usd(div(c.spend,c.clicks))}</td><td>${c.rev?(c.rev/c.spend).toFixed(2)+"x":"-"}</td></tr>`}).reverse().join("");
+   days.map(d=>{for(const k in c)c[k]+=d[k];if(d.cum)Object.assign(c,d.cum);return `<tr><td class="tl">${d.date}</td><td>${usd(c.spend)}</td><td>${c.clicks}</td><td>${c.leads}</td><td>${c.nl}</td><td>${c.sales||"-"}</td><td>${c.rev?usd(c.rev):"-"}</td><td>${usd(div(c.spend,c.leads))}</td><td>${usd(div(c.spend,c.clicks))}</td><td>${c.rev?(c.rev/c.spend).toFixed(2)+"x":"-"}</td></tr>`}).reverse().join("");
 }
 let drawAds,drawSets;
 function renderTables(){

@@ -12,6 +12,7 @@ ACCOUNT = "act_1246959949464564"
 CAMPAIGNS = ["120257051656890602", "120257100861880602"]  # ABO (11-04), CBO (11-05)
 LAUNCH = dt.date(2026, 11, 4)
 LEAD_ADJ = 163  # reconciliation to the 2026-11-10 registration count
+ADJ_FROM = dt.date(2026, 11, 10)  # running-total rows from this day carry the same offset as the headline
 GRAPH = "https://graph.facebook.com/v21.0"
 HYROS = "https://api.hyros.com/v1/api/v1.0/attribution"
 FB, HK = os.environ.get("FB_TOKEN", "").strip(), os.environ.get("HYROS_API_KEY", "").strip()
@@ -122,9 +123,19 @@ for r in daily_m:  # campaign-level rows: one per campaign per day, merge by dat
     x = by_day.setdefault(r["date_start"], {"spend": 0.0, "impr": 0, "clicks": 0, "ml": 0})
     x["spend"] += num(r.get("spend")); x["impr"] += int(num(r.get("impressions")))
     x["clicks"] += link_clicks(r); x["ml"] += meta_leads(r)
-for d in sorted(by_day):
-    hd = hsum(d, d)
-    daily.append(dict(date=d, **by_day[d], leads=int(hd["leads"]), nl=int(hd["new_leads"]), sales=int(hd["sales"]), rev=hd["revenue"]))
+# One row for EVERY calendar day launch..today, even days Meta has no row for (campaigns paused):
+# Hyros still books sales and leads on those days, and the last row is the page's "Today" box.
+# `cum` = Hyros pulled for launch..that day as one range. Hyros de-duplicates a lead across days, so
+# summing the per-day leads overstates the running total; the running-totals table reads `cum` instead.
+d = LAUNCH
+while d <= today:
+    ds = d.isoformat()
+    hd, hcum = hsum(ds, ds), hsum(since, ds)
+    m = by_day.get(ds, {"spend": 0.0, "impr": 0, "clicks": 0, "ml": 0})
+    daily.append(dict(date=ds, **m, leads=int(hd["leads"]), nl=int(hd["new_leads"]), sales=int(hd["sales"]), rev=hd["revenue"],
+                      cum={"leads": int(hcum["leads"]) + (LEAD_ADJ if d >= ADJ_FROM else 0), "nl": int(hcum["new_leads"]),
+                           "sales": int(hcum["sales"]), "rev": hcum["revenue"]}))
+    d += dt.timedelta(days=1)
 
 # MOF / BOF campaigns: their own box, never added to the TOF numbers above
 rt = []
